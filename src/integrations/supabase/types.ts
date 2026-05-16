@@ -1,0 +1,329 @@
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
+export type Database = {
+  public: {
+    Tables: {
+      barraquinhas: {
+        Row: {
+          altura: number | null
+          cor: string | null
+          created_at: string
+          evento_id: string
+          id: string
+          item_id: string
+          largura: number | null
+          nome: string
+          observacao: string | null
+          tipo: string
+          updated_at: string
+          x: number
+          y: number
+        }
+        Insert: {
+          altura?: number | null
+          cor?: string | null
+          created_at?: string
+          evento_id: string
+          id?: string
+          item_id: string
+          largura?: number | null
+          nome: string
+          observacao?: string | null
+          tipo: string
+          updated_at?: string
+          x: number
+          y: number
+        }
+        Update: {
+          altura?: number | null
+          cor?: string | null
+          created_at?: string
+          evento_id?: string
+          id?: string
+          item_id?: string
+          largura?: number | null
+          nome?: string
+          observacao?: string | null
+          tipo?: string
+          updated_at?: string
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "barraquinhas_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eventos: {
+        Row: {
+          altura_palco: number
+          colunas: number
+          created_at: string
+          distancia_mesas: number
+          endereco: string | null
+          espacamento_horizontal: number
+          id: string
+          largura_palco: number
+          linhas: number
+          nome: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          altura_palco?: number
+          colunas?: number
+          created_at?: string
+          distancia_mesas?: number
+          endereco?: string | null
+          espacamento_horizontal?: number
+          id?: string
+          largura_palco?: number
+          linhas?: number
+          nome: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          altura_palco?: number
+          colunas?: number
+          created_at?: string
+          distancia_mesas?: number
+          endereco?: string | null
+          espacamento_horizontal?: number
+          id?: string
+          largura_palco?: number
+          linhas?: number
+          nome?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mesas: {
+        Row: {
+          contato: string | null
+          created_at: string
+          evento_id: string
+          id: string
+          nome_comprador: string | null
+          nomes_pessoas: Json | null
+          numero_mesa: number
+          numero_pessoas: number | null
+          ocupada: boolean
+          updated_at: string
+        }
+        Insert: {
+          contato?: string | null
+          created_at?: string
+          evento_id: string
+          id?: string
+          nome_comprador?: string | null
+          nomes_pessoas?: Json | null
+          numero_mesa: number
+          numero_pessoas?: number | null
+          ocupada?: boolean
+          updated_at?: string
+        }
+        Update: {
+          contato?: string | null
+          created_at?: string
+          evento_id?: string
+          id?: string
+          nome_comprador?: string | null
+          nomes_pessoas?: Json | null
+          numero_mesa?: number
+          numero_pessoas?: number | null
+          ocupada?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mesas_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      placas: {
+        Row: {
+          cor: string
+          created_at: string
+          evento_id: string
+          id: string
+          placa_id: string
+          texto: string
+          updated_at: string
+          x: number
+          y: number
+        }
+        Insert: {
+          cor: string
+          created_at?: string
+          evento_id: string
+          id?: string
+          placa_id: string
+          texto: string
+          updated_at?: string
+          x: number
+          y: number
+        }
+        Update: {
+          cor?: string
+          created_at?: string
+          evento_id?: string
+          id?: string
+          placa_id?: string
+          texto?: string
+          updated_at?: string
+          x?: number
+          y?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "placas_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DefaultSchema = Database[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof Database },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof Database },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
+  ? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof Database },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof Database
+  }
+    ? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
+  ? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
