@@ -1275,15 +1275,16 @@ const MapaEvento: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex-1 min-w-0">
-            <div 
-              ref={mapaRef}
-              data-print="true"
-              className={cn(
-                "relative bg-white p-12 rounded-2xl shadow-xl border border-gray-200 w-full overflow-auto",
-                resizing ? "cursor-none select-none" : ""
-              )}
-              style={{ minHeight: '900px', minWidth: '1400px' }}
+          <div className="flex-1 min-w-0 overflow-auto pb-8 rounded-2xl">
+            <div className="min-w-max min-h-max flex justify-center p-4">
+              <div 
+                ref={mapaRef}
+                data-print="true"
+                className={cn(
+                  "relative bg-white p-12 rounded-2xl shadow-xl border border-gray-200",
+                  resizing ? "cursor-none select-none" : ""
+                )}
+                style={{ minHeight: '900px', minWidth: '1400px', width: 'max-content' }}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
             >
@@ -1353,6 +1354,7 @@ const MapaEvento: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
             </div>
           </div>
         </div>
