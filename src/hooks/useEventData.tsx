@@ -353,7 +353,8 @@ export const useEventData = () => {
             largura_palco: data.larguraPalco,
             altura_palco: data.alturaPalco,
             distancia_mesas: data.distanciaMesas,
-            espacamento_horizontal: data.espacamentoHorizontal
+            espacamento_horizontal: data.espacamentoHorizontal,
+            updated_at: new Date().toISOString()
           })
           .eq('id', currentEventoId);
 
