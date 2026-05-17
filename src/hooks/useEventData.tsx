@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useQuery } from '@tanstack/react-query';
 
 interface MesaData {
   id: number;
@@ -57,6 +58,25 @@ export const useEventData = () => {
   const [loading, setLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+
+  // Polling para checar atualizações de outros dispositivos (Soft-Realtime)
+  const { data: remoteUpdatedAt } = useQuery({
+    queryKey: ['evento_updated_at', eventoId],
+    queryFn: async () => {
+      if (!eventoId) return null;
+      const { data, error } = await supabase
+        .from('eventos')
+        .select('updated_at')
+        .eq('id', eventoId)
+        .maybeSingle();
+        
+      if (error || !data) return null;
+      return data.updated_at;
+    },
+    refetchInterval: 5000,
+    enabled: !!eventoId && !saving,
+  });
 
   // Criar evento padrão
   const createDefaultEvent = useCallback((): EventoData => {
@@ -115,6 +135,7 @@ export const useEventData = () => {
     setEventoId(null);
     setDataLoaded(false);
     setSaving(false);
+    setLastSyncTime(null);
   }, []);
 
   // Carregar dados do evento
@@ -156,6 +177,7 @@ export const useEventData = () => {
         endereco: evento.endereco
       });
       setEventoId(evento.id);
+      setLastSyncTime(evento.updated_at);
 
       // Carregar mesas
       console.log('📥 Carregando mesas do evento...');
@@ -343,7 +365,7 @@ export const useEventData = () => {
         console.log(`✅ [${saveId}] Novo evento criado com ID:`, currentEventoId);
       } else {
         console.log(`📝 [${saveId}] Atualizando evento existente:`, currentEventoId);
-        const { error: updateError } = await supabase
+        const { error: updateError, data: updatedEvento } = await supabase
           .from('eventos')
           .update({
             nome: data.nome,
@@ -356,11 +378,17 @@ export const useEventData = () => {
             espacamento_horizontal: data.espacamentoHorizontal,
             updated_at: new Date().toISOString()
           })
-          .eq('id', currentEventoId);
+          .eq('id', currentEventoId)
+          .select()
+          .single();
 
         if (updateError) {
           console.error(`❌ [${saveId}] Erro ao atualizar evento:`, updateError);
           throw updateError;
+        }
+        
+        if (updatedEvento) {
+          setLastSyncTime(updatedEvento.updated_at);
         }
         console.log(`✅ [${saveId}] Evento atualizado com sucesso`);
       }
@@ -529,6 +557,9 @@ export const useEventData = () => {
     dataLoaded,
     setDataLoaded,
     saving,
-    resetState
+    resetState,
+    remoteUpdatedAt,
+    lastSyncTime,
+    setLastSyncTime
   };
 };

@@ -94,7 +94,18 @@ const nomesCoresBandeirinhas: Record<string, string> = {
 const MapaEvento: React.FC = () => {
   const { toast } = useToast();
   const { user } = useAuth();
-  const { loadEventData, saveEventData, loading, setLoading, dataLoaded, saving, resetState } = useEventData();
+  const { 
+    loadEventData, 
+    saveEventData, 
+    loading, 
+    setLoading, 
+    dataLoaded, 
+    saving, 
+    resetState,
+    remoteUpdatedAt,
+    lastSyncTime,
+    setLastSyncTime
+  } = useEventData();
   const mapaRef = useRef<HTMLDivElement>(null);
   
   const [linhas, setLinhas] = useState(17);
@@ -1018,6 +1029,45 @@ const MapaEvento: React.FC = () => {
 
     initializeEventData();
   }, [user, dataLoaded, loadEventData, resetState, setLoading, toast]);
+
+  // Handle remote synchronization
+  useEffect(() => {
+    if (remoteUpdatedAt && lastSyncTime && remoteUpdatedAt > lastSyncTime) {
+      console.log('🔄 Sincronizando mapa: versão remota é mais recente', remoteUpdatedAt);
+      
+      toast({
+        title: "Sincronizando...",
+        description: "Alterações recebidas de outro dispositivo.",
+        duration: 3000,
+      });
+
+      // Update local time first to prevent loop
+      setLastSyncTime(remoteUpdatedAt);
+      
+      const syncData = async () => {
+        try {
+          const eventData = await loadEventData();
+          if (eventData) {
+            setLinhas(eventData.linhas);
+            setColunas(eventData.colunas);
+            setLarguraPalco(eventData.larguraPalco);
+            setAlturaPalco(eventData.alturaPalco);
+            setDistanciaMesas(eventData.distanciaMesas);
+            setEspacamentoHorizontal(eventData.espacamentoHorizontal);
+            setEnderecoEvento(eventData.endereco);
+            setMesas(eventData.mesas);
+            setBarraquinhas(eventData.barraquinhas);
+            setPlacas(eventData.placas);
+            setMesasExcluidas(eventData.mesasExcluidas);
+          }
+        } catch (error) {
+          console.error("Erro ao sincronizar dados", error);
+        }
+      };
+      
+      syncData();
+    }
+  }, [remoteUpdatedAt, lastSyncTime, loadEventData, toast, setLastSyncTime]);
 
   const mesasVisiveis = mesas.filter(mesa => !mesasExcluidas.has(mesa.id));
   const mesasOcupadas = mesasVisiveis.filter(mesa => mesa.ocupada).length;
