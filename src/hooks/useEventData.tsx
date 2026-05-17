@@ -159,13 +159,11 @@ export const useEventData = () => {
 
       if (eventoError) {
         console.error('❌ Erro ao carregar evento:', eventoError);
-        setDataLoaded(true);
         return createDefaultEvent();
       }
 
       if (!evento) {
         console.log('ℹ️ Nenhum evento encontrado, criando evento padrão');
-        setDataLoaded(true);
         return createDefaultEvent();
       }
 
@@ -296,8 +294,6 @@ export const useEventData = () => {
         placas: placasApp.length
       });
 
-      setDataLoaded(true);
-
       return {
         id: evento.id,
         nome: evento.nome,
@@ -317,7 +313,6 @@ export const useEventData = () => {
 
     } catch (error) {
       console.error('❌ Erro geral ao carregar dados:', error);
-      setDataLoaded(true);
       return createDefaultEvent();
     }
   }, [user, createDefaultEvent]);

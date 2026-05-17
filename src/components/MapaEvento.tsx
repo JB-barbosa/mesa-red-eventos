@@ -107,6 +107,7 @@ const MapaEvento: React.FC = () => {
     setLastSyncTime
   } = useEventData();
   const mapaRef = useRef<HTMLDivElement>(null);
+  const isInitializingRef = useRef(true);
   
   const [linhas, setLinhas] = useState(17);
   const [colunas, setColunas] = useState(11);
@@ -178,7 +179,7 @@ const MapaEvento: React.FC = () => {
   });
 
   useEffect(() => {
-    if (loading || !user || !dataLoaded) {
+    if (loading || !user || !dataLoaded || isInitializingRef.current) {
       return;
     }
 
@@ -982,6 +983,7 @@ const MapaEvento: React.FC = () => {
         console.log('Usuário não logado - resetando estado');
         resetState();
         setLoading(false);
+        isInitializingRef.current = false;
         return;
       }
       
@@ -991,6 +993,7 @@ const MapaEvento: React.FC = () => {
         return;
       }
       
+      isInitializingRef.current = true;
       setLoading(true);
       console.log('Inicializando dados do evento para usuário:', user.id);
       
@@ -1024,6 +1027,14 @@ const MapaEvento: React.FC = () => {
         });
       } finally {
         setLoading(false);
+        // Mark data as loaded and allow auto-save only AFTER React
+        // has committed all state updates from the setters above.
+        // This prevents the auto-save from firing with stale/default state.
+        setDataLoaded(true);
+        requestAnimationFrame(() => {
+          isInitializingRef.current = false;
+          console.log('🔓 Inicialização completa - salvamento automático liberado');
+        });
       }
     };
 
@@ -1032,7 +1043,7 @@ const MapaEvento: React.FC = () => {
 
   // Handle remote synchronization
   useEffect(() => {
-    if (remoteUpdatedAt && lastSyncTime && remoteUpdatedAt > lastSyncTime) {
+    if (remoteUpdatedAt && lastSyncTime && remoteUpdatedAt > lastSyncTime && !isInitializingRef.current) {
       console.log('🔄 Sincronizando mapa: versão remota é mais recente', remoteUpdatedAt);
       
       toast({
@@ -1043,6 +1054,7 @@ const MapaEvento: React.FC = () => {
 
       // Update local time first to prevent loop
       setLastSyncTime(remoteUpdatedAt);
+      isInitializingRef.current = true;
       
       const syncData = async () => {
         try {
@@ -1062,6 +1074,10 @@ const MapaEvento: React.FC = () => {
           }
         } catch (error) {
           console.error("Erro ao sincronizar dados", error);
+        } finally {
+          requestAnimationFrame(() => {
+            isInitializingRef.current = false;
+          });
         }
       };
       
