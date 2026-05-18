@@ -291,6 +291,7 @@ const MapaEvento: React.FC = () => {
   const handleTotalMesasChange = (novoTotal: number) => {
     if (novoTotal < 1 || novoTotal > 2500) return;
     hasUserEditedRef.current = true;
+    pendingImmediateSaveRef.current = true;
 
     const gridAtual = linhas * colunas;
     const visivelAtual = gridAtual - mesasExcluidas.size;
@@ -1085,13 +1086,14 @@ const MapaEvento: React.FC = () => {
       } finally {
         setLoading(false);
         setDataLoaded(true);
-        // Garantir que a inicialização fique travada por 2 segundos para dar tempo do 
+        // Garantir que a inicialização fique travada por 500ms para dar tempo do 
         // React processar todos os renders do rebuild das mesas e dados iniciais.
-        // Isso impede que qualquer estado intermediário/padrão sobrescreva o banco de dados.
+        // Isso impede que qualquer estado intermediário/padrão sobrescreva o banco de dados
+        // sem atrasar cliques e edições rápidas do usuário.
         setTimeout(() => {
           isInitializingRef.current = false;
           console.log('🔓 Inicialização completa - salvamento automático liberado');
-        }, 2000);
+        }, 500);
       }
     };
 
@@ -1135,7 +1137,7 @@ const MapaEvento: React.FC = () => {
           setTimeout(() => {
             isInitializingRef.current = false;
             console.log('🔓 Sincronização remota completa - salvamento automático liberado');
-          }, 2000);
+          }, 500);
         }
       };
       
@@ -1417,10 +1419,16 @@ const MapaEvento: React.FC = () => {
                 altura={alturaPalco}
                 distanciaMesas={distanciaMesas}
                 onResize={(largura, altura) => {
+                  hasUserEditedRef.current = true;
+                  pendingImmediateSaveRef.current = true;
                   setLarguraPalco(largura);
                   setAlturaPalco(altura);
                 }}
-                onDistanceChange={setDistanciaMesas}
+                onDistanceChange={(distancia) => {
+                  hasUserEditedRef.current = true;
+                  pendingImmediateSaveRef.current = true;
+                  setDistanciaMesas(distancia);
+                }}
                 editMode={editMode}
               />
 
@@ -1487,6 +1495,7 @@ const MapaEvento: React.FC = () => {
           endereco={enderecoEvento}
           onEnderecoChange={(novoEndereco) => {
             hasUserEditedRef.current = true;
+            pendingImmediateSaveRef.current = true;
             setEnderecoEvento(novoEndereco);
           }}
         />
