@@ -384,24 +384,58 @@ const MapaEvento: React.FC = () => {
     setFormularioMesaAberto(true);
   };
 
-  const handleSaveMesa = (mesaAtualizada: MesaData) => {
+  const handleSaveMesa = async (mesaAtualizada: MesaData): Promise<boolean> => {
     hasUserEditedRef.current = true;
     pendingImmediateSaveRef.current = true;
-    setMesas(prev => prev.map(mesa => 
-      mesa.id === mesaAtualizada.id ? mesaAtualizada : mesa
-    ));
 
-    if (mesaAtualizada.ocupada) {
+    // 1. Criar novo array de mesas sincronamente
+    const novasMesas = mesas.map(mesa => 
+      mesa.id === mesaAtualizada.id ? mesaAtualizada : mesa
+    );
+
+    // 2. Atualizar estado local
+    setMesas(novasMesas);
+
+    // 3. Montar dados completos do evento atualizados para o banco
+    const dadosEventoAtualizados = {
+      nome: 'Meu Evento',
+      endereco: enderecoEvento,
+      linhas,
+      colunas,
+      larguraPalco,
+      alturaPalco,
+      distanciaMesas,
+      espacamentoHorizontal,
+      mesas: novasMesas,
+      barraquinhas,
+      placas,
+      mesasExcluidas
+    };
+
+    console.log('💾 Salvando alteração de mesa de forma prioritária e síncrona no banco...');
+    
+    // 4. Gravar diretamente e aguardar
+    const success = await saveEventData(dadosEventoAtualizados);
+
+    if (success) {
       toast({
-        title: "Mesa Reservada!",
-        description: `Mesa ${mesaAtualizada.id} reservada para ${mesaAtualizada.nomeComprador}`,
+        title: mesaAtualizada.ocupada ? "Mesa Reservada!" : "Mesa Liberada!",
+        description: mesaAtualizada.ocupada 
+          ? `Mesa ${mesaAtualizada.id} reservada para ${mesaAtualizada.nomeComprador}`
+          : `Mesa ${mesaAtualizada.id} está novamente disponível`,
       });
+      // Marcar que as alterações foram salvas
+      setHasUnsavedChanges(false);
+      hasUserEditedRef.current = false;
     } else {
       toast({
-        title: "Mesa Liberada!",
-        description: `Mesa ${mesaAtualizada.id} está novamente disponível`,
+        title: "Erro ao salvar reserva",
+        description: "Não foi possível gravar no banco. Por favor, tente novamente.",
+        variant: "destructive"
       });
     }
+
+    return success;
   };
 
   const handleAddBarraquinha = () => {

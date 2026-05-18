@@ -1,10 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { X } from 'lucide-react';
 
 interface MesaData {
   id: number;
@@ -19,7 +17,7 @@ interface FormularioMesaProps {
   mesa: MesaData | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (mesaData: MesaData) => void;
+  onSave: (mesaData: MesaData) => Promise<boolean>;
 }
 
 const FormularioMesa: React.FC<FormularioMesaProps> = ({ mesa, isOpen, onClose, onSave }) => {
@@ -27,6 +25,7 @@ const FormularioMesa: React.FC<FormularioMesaProps> = ({ mesa, isOpen, onClose, 
   const [nomeComprador, setNomeComprador] = useState('');
   const [contato, setContato] = useState('');
   const [nomesPessoas, setNomesPessoas] = useState<string[]>([]);
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
     if (mesa) {
@@ -59,43 +58,67 @@ const FormularioMesa: React.FC<FormularioMesaProps> = ({ mesa, isOpen, onClose, 
     setNomesPessoas(novosNomes);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!mesa || !numeroPessoas || !nomeComprador || !contato) return;
 
-    const mesaAtualizada: MesaData = {
-      ...mesa,
-      numeroPessoas: parseInt(numeroPessoas),
-      nomeComprador,
-      nomesPessoas,
-      contato,
-      ocupada: true
-    };
+    setSalvando(true);
+    try {
+      const mesaAtualizada: MesaData = {
+        ...mesa,
+        numeroPessoas: parseInt(numeroPessoas),
+        nomeComprador,
+        nomesPessoas,
+        contato,
+        ocupada: true
+      };
 
-    onSave(mesaAtualizada);
-    onClose();
+      const success = await onSave(mesaAtualizada);
+      if (success) {
+        onClose();
+      }
+    } catch (error) {
+      console.error('Erro ao salvar mesa:', error);
+    } finally {
+      setSalvando(false);
+    }
   };
 
-  const handleClear = () => {
+  const handleClear = async () => {
     if (!mesa) return;
 
-    const mesaLimpa: MesaData = {
-      ...mesa,
-      numeroPessoas: undefined,
-      nomeComprador: undefined,
-      nomesPessoas: undefined,
-      contato: undefined,
-      ocupada: false
-    };
+    setSalvando(true);
+    try {
+      const mesaLimpa: MesaData = {
+        ...mesa,
+        numeroPessoas: undefined,
+        nomeComprador: undefined,
+        nomesPessoas: undefined,
+        contato: undefined,
+        ocupada: false
+      };
 
-    onSave(mesaLimpa);
-    onClose();
+      const success = await onSave(mesaLimpa);
+      if (success) {
+        onClose();
+      }
+    } catch (error) {
+      console.error('Erro ao liberar mesa:', error);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    // Impedir fechamento manual clicando fora ou no X se estiver salvando
+    if (salvando) return;
+    if (!open) onClose();
   };
 
   if (!mesa) return null;
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-white">
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent className="sm:max-w-md bg-white" onPointerDownOutside={(e) => salvando && e.preventDefault()} onEscapeKeyDown={(e) => salvando && e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-lg font-bold text-center">
             Mesa {mesa.id}
@@ -113,6 +136,7 @@ const FormularioMesa: React.FC<FormularioMesaProps> = ({ mesa, isOpen, onClose, 
               onChange={(e) => setNumeroPessoas(e.target.value)}
               min="1"
               max="10"
+              disabled={salvando}
             />
           </div>
           
@@ -123,6 +147,7 @@ const FormularioMesa: React.FC<FormularioMesaProps> = ({ mesa, isOpen, onClose, 
               placeholder="Digite o nome completo"
               value={nomeComprador}
               onChange={(e) => setNomeComprador(e.target.value)}
+              disabled={salvando}
             />
           </div>
           
@@ -133,6 +158,7 @@ const FormularioMesa: React.FC<FormularioMesaProps> = ({ mesa, isOpen, onClose, 
               placeholder="(11) 99999-9999"
               value={contato}
               onChange={(e) => setContato(e.target.value)}
+              disabled={salvando}
             />
           </div>
 
@@ -150,6 +176,7 @@ const FormularioMesa: React.FC<FormularioMesaProps> = ({ mesa, isOpen, onClose, 
                     value={nome}
                     onChange={(e) => handleNomePessoaChange(index, e.target.value)}
                     className="h-8 text-sm"
+                    disabled={salvando}
                   />
                 </div>
               ))}
@@ -162,17 +189,29 @@ const FormularioMesa: React.FC<FormularioMesaProps> = ({ mesa, isOpen, onClose, 
             <Button
               variant="outline"
               onClick={handleClear}
-              className="flex-1 border-red-500 text-red-500 hover:bg-red-50"
+              disabled={salvando}
+              className="flex-1 border-red-500 text-red-500 hover:bg-red-50 flex items-center justify-center"
             >
-              Liberar Mesa
+              {salvando ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div>
+              ) : (
+                'Liberar Mesa'
+              )}
             </Button>
           )}
           <Button
             onClick={handleSave}
-            disabled={!numeroPessoas || !nomeComprador || !contato}
-            className="flex-1 bg-green-600 hover:bg-green-700"
+            disabled={salvando || !numeroPessoas || !nomeComprador || !contato}
+            className="flex-1 bg-green-600 hover:bg-green-700 flex items-center justify-center gap-2"
           >
-            Confirmar Reserva
+            {salvando ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                Salvando...
+              </>
+            ) : (
+              'Confirmar Reserva'
+            )}
           </Button>
         </div>
       </DialogContent>
