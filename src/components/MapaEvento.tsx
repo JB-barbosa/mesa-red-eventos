@@ -110,6 +110,8 @@ const MapaEvento: React.FC = () => {
   const isInitializingRef = useRef(true);
   const pendingImmediateSaveRef = useRef(false);
   const hasUserEditedRef = useRef(false);
+  const loadVersionRef = useRef(0);
+  const saveVersionRef = useRef(0);
   
   const [linhas, setLinhas] = useState(17);
   const [colunas, setColunas] = useState(11);
@@ -189,7 +191,17 @@ const MapaEvento: React.FC = () => {
   });
 
   useEffect(() => {
-    if (loading || !user || !dataLoaded || isInitializingRef.current) {
+    if (loading || !user || !dataLoaded) {
+      return;
+    }
+
+    // Proteção contra salvamento durante a inicialização:
+    // O loadVersionRef é incrementado quando os dados terminam de carregar.
+    // Só permitimos salvar quando o saveVersionRef alcançar o loadVersionRef,
+    // o que significa que já "vimos" todos os re-renders da inicialização.
+    if (saveVersionRef.current < loadVersionRef.current) {
+      saveVersionRef.current = loadVersionRef.current;
+      console.log('🛡️ Ignorando primeiro eventData após carregamento (versão:', loadVersionRef.current, ')');
       return;
     }
 
@@ -228,8 +240,20 @@ const MapaEvento: React.FC = () => {
   React.useEffect(() => {
     const totalMesas = linhas * colunas;
     setMesas(prev => {
-      const novasMesas: MesaData[] = [];
+      // Se o tamanho já está correto, não criar nova referência
+      if (prev.length === totalMesas) {
+        // Verificar se todas as mesas existem com os IDs corretos
+        let allMatch = true;
+        for (let i = 0; i < totalMesas; i++) {
+          if (!prev[i] || prev[i].id !== i + 1) {
+            allMatch = false;
+            break;
+          }
+        }
+        if (allMatch) return prev; // Retorna a mesma referência - sem re-render
+      }
       
+      const novasMesas: MesaData[] = [];
       for (let i = 1; i <= totalMesas; i++) {
         const mesaExistente = prev.find(m => m.id === i);
         novasMesas.push(mesaExistente || {
@@ -1072,14 +1096,17 @@ const MapaEvento: React.FC = () => {
         });
       } finally {
         setLoading(false);
-        // Mark data as loaded and allow auto-save only AFTER React
-        // has committed all state updates from the setters above.
-        // This prevents the auto-save from firing with stale/default state.
         setDataLoaded(true);
-        requestAnimationFrame(() => {
+        // Incrementar a versão de carregamento DEPOIS de React commitar os state updates.
+        // O useEffect[eventData] vai ver que saveVersionRef < loadVersionRef 
+        // e ignorar o primeiro disparo (que é apenas a propagação do carregamento).
+        // Usamos setTimeout 0 para garantir que rode APÓS todos os useEffects derivados
+        // (como o useEffect[linhas, colunas] que reconstrói o array de mesas)
+        setTimeout(() => {
+          loadVersionRef.current += 1;
           isInitializingRef.current = false;
-          console.log('🔓 Inicialização completa - salvamento automático liberado');
-        });
+          console.log('🔓 Inicialização completa - salvamento automático liberado (versão:', loadVersionRef.current, ')');
+        }, 100);
       }
     };
 
@@ -1120,9 +1147,11 @@ const MapaEvento: React.FC = () => {
         } catch (error) {
           console.error("Erro ao sincronizar dados", error);
         } finally {
-          requestAnimationFrame(() => {
+          setTimeout(() => {
+            loadVersionRef.current += 1;
             isInitializingRef.current = false;
-          });
+            console.log('🔓 Sincronização completa (versão:', loadVersionRef.current, ')');
+          }, 100);
         }
       };
       
