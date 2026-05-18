@@ -110,8 +110,6 @@ const MapaEvento: React.FC = () => {
   const isInitializingRef = useRef(true);
   const pendingImmediateSaveRef = useRef(false);
   const hasUserEditedRef = useRef(false);
-  const loadVersionRef = useRef(0);
-  const saveVersionRef = useRef(0);
   
   const [linhas, setLinhas] = useState(17);
   const [colunas, setColunas] = useState(11);
@@ -191,17 +189,7 @@ const MapaEvento: React.FC = () => {
   });
 
   useEffect(() => {
-    if (loading || !user || !dataLoaded) {
-      return;
-    }
-
-    // Proteção contra salvamento durante a inicialização:
-    // O loadVersionRef é incrementado quando os dados terminam de carregar.
-    // Só permitimos salvar quando o saveVersionRef alcançar o loadVersionRef,
-    // o que significa que já "vimos" todos os re-renders da inicialização.
-    if (saveVersionRef.current < loadVersionRef.current) {
-      saveVersionRef.current = loadVersionRef.current;
-      console.log('🛡️ Ignorando primeiro eventData após carregamento (versão:', loadVersionRef.current, ')');
+    if (loading || !user || !dataLoaded || isInitializingRef.current) {
       return;
     }
 
@@ -1097,16 +1085,13 @@ const MapaEvento: React.FC = () => {
       } finally {
         setLoading(false);
         setDataLoaded(true);
-        // Incrementar a versão de carregamento DEPOIS de React commitar os state updates.
-        // O useEffect[eventData] vai ver que saveVersionRef < loadVersionRef 
-        // e ignorar o primeiro disparo (que é apenas a propagação do carregamento).
-        // Usamos setTimeout 0 para garantir que rode APÓS todos os useEffects derivados
-        // (como o useEffect[linhas, colunas] que reconstrói o array de mesas)
+        // Garantir que a inicialização fique travada por 2 segundos para dar tempo do 
+        // React processar todos os renders do rebuild das mesas e dados iniciais.
+        // Isso impede que qualquer estado intermediário/padrão sobrescreva o banco de dados.
         setTimeout(() => {
-          loadVersionRef.current += 1;
           isInitializingRef.current = false;
-          console.log('🔓 Inicialização completa - salvamento automático liberado (versão:', loadVersionRef.current, ')');
-        }, 100);
+          console.log('🔓 Inicialização completa - salvamento automático liberado');
+        }, 2000);
       }
     };
 
@@ -1148,10 +1133,9 @@ const MapaEvento: React.FC = () => {
           console.error("Erro ao sincronizar dados", error);
         } finally {
           setTimeout(() => {
-            loadVersionRef.current += 1;
             isInitializingRef.current = false;
-            console.log('🔓 Sincronização completa (versão:', loadVersionRef.current, ')');
-          }, 100);
+            console.log('🔓 Sincronização remota completa - salvamento automático liberado');
+          }, 2000);
         }
       };
       
