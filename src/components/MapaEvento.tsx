@@ -108,6 +108,8 @@ const MapaEvento: React.FC = () => {
   } = useEventData();
   const mapaRef = useRef<HTMLDivElement>(null);
   const isInitializingRef = useRef(true);
+  const pendingImmediateSaveRef = useRef(false);
+  const hasUserEditedRef = useRef(false);
   
   const [linhas, setLinhas] = useState(17);
   const [colunas, setColunas] = useState(11);
@@ -127,6 +129,7 @@ const MapaEvento: React.FC = () => {
   const [placas, setPlacas] = useState<PlacaData[]>([]);
   
   const [editMode, setEditMode] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [draggedItem, setDraggedItem] = useState<BarraquinhaData | PlacaData | null>(null);
   const [resizing, setResizing] = useState<{
     item: BarraquinhaData;
@@ -174,7 +177,14 @@ const MapaEvento: React.FC = () => {
 
   const { scheduleSave, saveImmediately } = useDebouncedSave({
     delay: 1500,
-    onSave: () => saveEventData(eventData),
+    onSave: async () => {
+      const success = await saveEventData(eventData);
+      if (success) {
+        setHasUnsavedChanges(false);
+        hasUserEditedRef.current = false;
+      }
+      return success;
+    },
     enabled: dataLoaded && !!user
   });
 
@@ -183,17 +193,28 @@ const MapaEvento: React.FC = () => {
       return;
     }
 
-    console.log('📝 Detectada mudança nos dados - agendando salvamento automático');
-    scheduleSave();
-  }, [eventData, loading, user, dataLoaded, scheduleSave]);
+    setHasUnsavedChanges(true);
+
+    if (pendingImmediateSaveRef.current) {
+      console.log('🚀 Salvamento imediato solicitado por ação prioritária');
+      pendingImmediateSaveRef.current = false;
+      saveImmediately().then((success) => {
+        if (success) setHasUnsavedChanges(false);
+      });
+    } else {
+      console.log('📝 Detectada mudança nos dados - agendando salvamento automático');
+      scheduleSave();
+    }
+  }, [eventData, loading, user, dataLoaded, scheduleSave, saveImmediately]);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (user && dataLoaded) {
+      if (hasUnsavedChanges && user && dataLoaded) {
         console.log('💾 Salvando projeto antes de sair...');
         saveImmediately();
         e.preventDefault();
-        e.returnValue = '';
+        e.returnValue = 'Você tem alterações não salvas!';
+        return 'Você tem alterações não salvas!';
       }
     };
 
@@ -202,7 +223,7 @@ const MapaEvento: React.FC = () => {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [user, dataLoaded, saveImmediately]);
+  }, [user, dataLoaded, saveImmediately, hasUnsavedChanges]);
 
   React.useEffect(() => {
     const totalMesas = linhas * colunas;
@@ -257,6 +278,7 @@ const MapaEvento: React.FC = () => {
 
   const handleTotalMesasChange = (novoTotal: number) => {
     if (novoTotal < 1 || novoTotal > 2500) return;
+    hasUserEditedRef.current = true;
 
     const gridAtual = linhas * colunas;
     const visivelAtual = gridAtual - mesasExcluidas.size;
@@ -307,6 +329,8 @@ const MapaEvento: React.FC = () => {
   };
 
   const handleLinhasChange = (novasLinhas: number) => {
+    hasUserEditedRef.current = true;
+    pendingImmediateSaveRef.current = true;
     setLinhas(novasLinhas);
     toast({
       title: "Linhas atualizadas!",
@@ -315,6 +339,8 @@ const MapaEvento: React.FC = () => {
   };
 
   const handleColunasChange = (novasColunas: number) => {
+    hasUserEditedRef.current = true;
+    pendingImmediateSaveRef.current = true;
     setColunas(novasColunas);
     toast({
       title: "Colunas atualizadas!",
@@ -324,6 +350,8 @@ const MapaEvento: React.FC = () => {
 
   const handleDeleteMesa = (mesaId: number) => {
     console.log('Excluindo mesa:', mesaId);
+    hasUserEditedRef.current = true;
+    pendingImmediateSaveRef.current = true;
     setMesasExcluidas(prev => {
       const novasExcluidas = new Set(prev);
       novasExcluidas.add(mesaId);
@@ -344,6 +372,8 @@ const MapaEvento: React.FC = () => {
   };
 
   const handleSaveMesa = (mesaAtualizada: MesaData) => {
+    hasUserEditedRef.current = true;
+    pendingImmediateSaveRef.current = true;
     setMesas(prev => prev.map(mesa => 
       mesa.id === mesaAtualizada.id ? mesaAtualizada : mesa
     ));
@@ -394,6 +424,8 @@ const MapaEvento: React.FC = () => {
   };
 
   const handleSaveBarraquinha = (barraquinhaData: BarraquinhaData) => {
+    hasUserEditedRef.current = true;
+    pendingImmediateSaveRef.current = true;
     if (barraquinhaSelecionada?.id) {
       setBarraquinhas(prev => prev.map(b => 
         b.id === barraquinhaData.id ? barraquinhaData : b
@@ -423,6 +455,8 @@ const MapaEvento: React.FC = () => {
   };
 
   const handleDeleteBarraquinha = (id: string) => {
+    hasUserEditedRef.current = true;
+    pendingImmediateSaveRef.current = true;
     setBarraquinhas(prev => prev.filter(b => b.id !== id));
     toast({
       title: "Item removido!",
@@ -439,6 +473,8 @@ const MapaEvento: React.FC = () => {
       nome: barraquinha.nome ? `${barraquinha.nome} (Cópia)` : 'Cópia'
     };
     
+    hasUserEditedRef.current = true;
+    pendingImmediateSaveRef.current = true;
     setBarraquinhas(prev => [...prev, newBarraquinha]);
     
     toast({
@@ -448,6 +484,8 @@ const MapaEvento: React.FC = () => {
   };
 
   const handleSavePlaca = (placaData: PlacaData) => {
+    hasUserEditedRef.current = true;
+    pendingImmediateSaveRef.current = true;
     if (placaSelecionada?.id) {
       setPlacas(prev => prev.map(p => 
         p.id === placaData.id ? placaData : p
@@ -468,6 +506,8 @@ const MapaEvento: React.FC = () => {
   };
 
   const handleDeletePlaca = (id: string) => {
+    hasUserEditedRef.current = true;
+    pendingImmediateSaveRef.current = true;
     setPlacas(prev => prev.filter(p => p.id !== id));
     toast({
       title: "Placa removida!",
@@ -486,6 +526,7 @@ const MapaEvento: React.FC = () => {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     if (!draggedItem) return;
+    hasUserEditedRef.current = true;
 
     const rect = e.currentTarget.getBoundingClientRect();
     const targetX = e.clientX - rect.left;
@@ -566,6 +607,8 @@ const MapaEvento: React.FC = () => {
 
   const handleMouseUp = useCallback(() => {
     if (resizing) {
+      hasUserEditedRef.current = true;
+      pendingImmediateSaveRef.current = true;
       toast({
         title: "Item redimensionado!",
         description: `${resizing.item.nome} foi redimensionado`,
@@ -602,6 +645,8 @@ const MapaEvento: React.FC = () => {
     const handleMouseUp = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      hasUserEditedRef.current = true;
+      pendingImmediateSaveRef.current = true;
       toast({
         title: "Espaçamento atualizado!",
         description: `Espaçamento horizontal ajustado para ${Math.round(espacamentoHorizontal)}px`,
@@ -1427,7 +1472,10 @@ const MapaEvento: React.FC = () => {
 
         <RodapeEvento
           endereco={enderecoEvento}
-          onEnderecoChange={setEnderecoEvento}
+          onEnderecoChange={(novoEndereco) => {
+            hasUserEditedRef.current = true;
+            setEnderecoEvento(novoEndereco);
+          }}
         />
 
         <FormularioMesa

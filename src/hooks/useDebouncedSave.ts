@@ -16,16 +16,15 @@ export const useDebouncedSave = ({ delay, onSave, enabled }: UseDebouncedSaveOpt
   const onSaveRef = useRef(onSave);
   const enabledRef = useRef(enabled);
   
-  useEffect(() => {
-    onSaveRef.current = onSave;
-    enabledRef.current = enabled;
-  }, [onSave, enabled]);
+  // Atualizar as referências síncronamente durante o ciclo de renderização
+  onSaveRef.current = onSave;
+  enabledRef.current = enabled;
 
   const debouncedSave = useCallback(async () => {
     if (!enabledRef.current || saveInProgressRef.current) {
       pendingSaveRef.current = true;
       console.log('⏳ Salvamento bloqueado - enabled:', enabledRef.current, 'inProgress:', saveInProgressRef.current);
-      return;
+      return false;
     }
 
     // Evitar salvamentos muito frequentes
@@ -66,6 +65,7 @@ export const useDebouncedSave = ({ delay, onSave, enabled }: UseDebouncedSaveOpt
           }
         }, 2000);
       }
+      return success;
     } catch (error) {
       console.error('❌ Erro no salvamento debounced:', error);
       
@@ -78,6 +78,7 @@ export const useDebouncedSave = ({ delay, onSave, enabled }: UseDebouncedSaveOpt
           }
         }, 3000);
       }
+      return false;
     } finally {
       saveInProgressRef.current = false;
     }

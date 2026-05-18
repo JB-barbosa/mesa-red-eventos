@@ -182,7 +182,8 @@ export const useEventData = () => {
       const { data: mesas, error: mesasError } = await supabase
         .from('mesas')
         .select('*')
-        .eq('evento_id', evento.id);
+        .eq('evento_id', evento.id)
+        .order('updated_at', { ascending: false });
 
       if (mesasError) {
         console.error('❌ Erro ao carregar mesas:', mesasError);
@@ -388,14 +389,27 @@ export const useEventData = () => {
         console.log(`✅ [${saveId}] Evento atualizado com sucesso`);
       }
 
-      // 2. Limpar dados existentes
+      // 2. Limpar dados existentes com verificação de erro rígida
       console.log(`🧹 [${saveId}] Limpando dados existentes...`);
       
-      await Promise.all([
+      const [delMesasRes, delBarrRes, delPlacRes] = await Promise.all([
         supabase.from('mesas').delete().eq('evento_id', currentEventoId),
         supabase.from('barraquinhas').delete().eq('evento_id', currentEventoId),
         supabase.from('placas').delete().eq('evento_id', currentEventoId)
       ]);
+
+      if (delMesasRes.error) {
+        console.error(`❌ [${saveId}] Erro ao deletar mesas antigas:`, delMesasRes.error);
+        throw delMesasRes.error;
+      }
+      if (delBarrRes.error) {
+        console.error(`❌ [${saveId}] Erro ao deletar barraquinhas antigas:`, delBarrRes.error);
+        throw delBarrRes.error;
+      }
+      if (delPlacRes.error) {
+        console.error(`❌ [${saveId}] Erro ao deletar placas antigas:`, delPlacRes.error);
+        throw delPlacRes.error;
+      }
 
       // 3. Inserir novos dados com posições precisas
       const totalMesasLayout = data.linhas * data.colunas;
