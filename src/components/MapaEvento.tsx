@@ -65,12 +65,12 @@ const coresBandeirinhas = [
   '#ef4444', // Vermelha
   '#10b981', // Verde
   '#8b5cf6', // Roxa
-  '#f472b6', // Pink
+  '#ec4899', // Pink
   '#000000', // Preta
   '#6b7280', // Cinza
   '#92400e', // Marrom
   '#f97316', // Laranja
-  '#ec4899', // Rosa
+  '#f472b6', // Rosa
   '#a78bfa', // Lilás
   '#3b82f6'  // Azul claro
 ];
@@ -81,12 +81,12 @@ const nomesCoresBandeirinhas: Record<string, string> = {
   '#ef4444': 'Vermelha',
   '#10b981': 'Verde',
   '#8b5cf6': 'Roxa',
-  '#f472b6': 'Pink',
+  '#ec4899': 'Pink',
   '#000000': 'Preta',
   '#6b7280': 'Cinza',
   '#92400e': 'Marrom',
   '#f97316': 'Laranja',
-  '#ec4899': 'Rosa',
+  '#f472b6': 'Rosa',
   '#a78bfa': 'Lilás',
   '#3b82f6': 'Azul Claro',
 };
